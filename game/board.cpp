@@ -1819,6 +1819,12 @@ void Board::calculateAreaForPla(
   //Does this border a pla group that has been marked as not pass alive?
   bool bordersNonPassAlivePlaByHead[MAX_ARR_SIZE];
 
+  //set to initial values. Faster than std::fill in O2 optimization by compiler, might be similar when use O3.
+  memset(regionIdxByLoc, -1, sizeof(regionIdxByLoc[0])*MAX_ARR_SIZE);
+  memset(nextEmptyOrOpp, NULL_LOC, sizeof(nextEmptyOrOpp[0])*MAX_ARR_SIZE);
+  memset(bordersNonPassAlivePlaByHead, false, sizeof(bordersNonPassAlivePlaByHead[0])*MAX_ARR_SIZE);
+
+
   //A list for each region head, indicating which pla group heads the region is vital for.
   //A region is vital for a pla group if all its spaces are adjacent to that pla group.
   //All lists are concatenated together, the most we can have is bounded by (MAX_LEN * MAX_LEN+1) / 2
@@ -1838,21 +1844,6 @@ void Board::calculateAreaForPla(
   uint8_t numInternalSpacesMax2[maxRegions];
   bool containsOpp[maxRegions];
 
-  for(int i = 0; i<MAX_ARR_SIZE; i++) { //todo: use std::fill
-    regionIdxByLoc[i] = -1;
-    nextEmptyOrOpp[i] = NULL_LOC;
-    bordersNonPassAlivePlaByHead[i] = false;
-  }
-
-  auto isAdjacentToPlaHead = [pla,this](Loc loc, Loc plaHead) {//todo: did we already have this function?
-    FOREACHADJ(
-      Loc adj = loc + ADJOFFSET;
-      if(colors[adj] == pla && chain_head[adj] == plaHead)
-        return true;
-    );
-    return false;
-  };
-
   //Breadth-first-search trace maximal non-pla regions of the board and record their properties and join them into a
   //linked list through nextEmptyOrOpp.
   //Takes as input the location serving as the head, the tip node of the linked list so far, the next loc, and the
@@ -1868,12 +1859,12 @@ void Board::calculateAreaForPla(
     &vitalStart,&vitalLen,&numInternalSpacesMax2,&containsOpp,
     &buildRegionQueue,
     this,
-    &isAdjacentToPlaHead,&nextEmptyOrOpp](Loc tailTarget, Loc initialLoc, int regionIdx) -> Loc {
-
-    //Already traced this location, skip
-    if(regionIdxByLoc[initialLoc] != -1)
-      return tailTarget;
-
+    &nextEmptyOrOpp](Loc initialLoc, int regionIdx) -> Loc {
+    //this code use a queue to build region. Starting from a new position which means (assume the input)
+    //  already checked that regionIdxByLoc[initialLoc] == -1 before calling this function
+    //  therefore,  the tailTarget start from initialLoc
+    Loc tailTarget = initialLoc;
+    bool isVelnNoneZero {vitalLen[regionIdx]>0};
     int buildRegionQueueHead = 0;
     int buildRegionQueueTail = 1;
     buildRegionQueue[0] = initialLoc;
@@ -1887,23 +1878,23 @@ void Board::calculateAreaForPla(
       //First, filter out any pla heads it turns out we're not vital for because we're not adjacent to them
       //In the case where suicide is disallowed, we only do this filtering on intersections that are actually empty
       {
-        if(isMultiStoneSuicideLegal || colors[loc] == C_EMPTY) {
+        if(isVelnNoneZero && (isMultiStoneSuicideLegal || colors[loc] == C_EMPTY)) {
           uint16_t vStart = vitalStart[regionIdx];
           uint16_t oldVLen = vitalLen[regionIdx];
           uint16_t newVLen = 0;
           for(uint16_t i = 0; i<oldVLen; i++) {
-            if(isAdjacentToPlaHead(loc,vitalForPlaHeadsLists[vStart+i])) {
+            if(isAdjacentToPlaHead(pla, loc,vitalForPlaHeadsLists[vStart+i])) {
               vitalForPlaHeadsLists[vStart+newVLen] = vitalForPlaHeadsLists[vStart+i];
               newVLen += 1;
             }
           }
           vitalLen[regionIdx] = newVLen;
+          isVelnNoneZero = (newVLen>0);
         }
       }
 
       //Determine if this point is internal, unless we already have many internal points
-      if(numInternalSpacesMax2[regionIdx] < 2) {
-        if(!isAdjacentToPla(loc,pla))
+      if(numInternalSpacesMax2[regionIdx] < 2 && !isAdjacentToPla(loc,pla)){
           numInternalSpacesMax2[regionIdx] += 1;
       }
 
@@ -1925,13 +1916,12 @@ void Board::calculateAreaForPla(
     }
 
     assert(buildRegionQueueTail < MAX_ARR_SIZE);
-
     return tailTarget;
   };
 
   bool atLeastOnePla = false;
-  for(int y = 0; y < y_size; y++) {
-    for(int x = 0; x < x_size; x++) {
+  for(int y = 0; y < y_size; ++y) {
+    for(int x = 0; x < x_size; ++x) {
       Loc loc = Location::getLoc(x,y,x_size);
       if(regionIdxByLoc[loc] != -1)
         continue;
@@ -1940,12 +1930,11 @@ void Board::calculateAreaForPla(
         continue;
       }
       int16_t regionIdx = numRegions;
-      numRegions++;
+      ++numRegions;
       assert(numRegions <= maxRegions);
 
       //Initialize region metadata
-      Loc head = loc;
-      regionHeads[regionIdx] = head;
+      regionHeads[regionIdx] = loc;
       vitalStart[regionIdx] = vitalForPlaHeadsListsTotal;
       vitalLen[regionIdx] = 0;
       numInternalSpacesMax2[regionIdx] = 0;
@@ -1975,8 +1964,8 @@ void Board::calculateAreaForPla(
         }
         vitalLen[regionIdx] = initialVLen;
       }
-      Loc tailTarget = buildRegion(head,loc,regionIdx);
-      nextEmptyOrOpp[head] = tailTarget;
+      Loc tailTarget = buildRegion(loc,regionIdx);
+      nextEmptyOrOpp[loc] = tailTarget;
 
       vitalForPlaHeadsListsTotal += vitalLen[regionIdx];
 
@@ -2622,4 +2611,13 @@ Board Board::parseBoard(int xSize, int ySize, const string& s, char lineDelimite
     }
   }
   return board; //may need to consider to add a move constructor and move assignment operator for board class. Result: No need to do it.
+}
+
+bool Board::isAdjacentToPlaHead(Player pla, Loc loc, Loc plaHead) const {
+    FOREACHADJ(
+        Loc adj = loc + ADJOFFSET;
+        if(colors[adj] == pla && chain_head[adj] == plaHead)
+          return true;
+    );
+    return false;
 }

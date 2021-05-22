@@ -11,7 +11,7 @@ using namespace TestCommon;
 
 void BenchmarkSolutions::testBenson() {
   auto sgfFilesReader = SGFFilesReader("/Users/haodafu/Documents/Files/Temp/katagomatch/benchmarkdata");
-  size_t totalGameTest = 1;
+  size_t totalGameTest = 3;
 
   auto calAreas = [](const Board& board, Color result[Board::MAX_ARR_SIZE]) ->int64_t{
     int64_t res = 0;
