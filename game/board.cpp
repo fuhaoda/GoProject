@@ -1950,7 +1950,7 @@ void Board::calculateAreaForPla(
           if(colors[adj] == pla) {
             Loc plaHead = chain_head[adj];
             bool alreadyPresent = false;
-            for(int j = 0; j<initialVLen; j++) {
+            for(int j = 0; j<initialVLen; ++j) {
               if(vitalForPlaHeadsLists[vStart+j] == plaHead) {
                 alreadyPresent = true;
                 break;
@@ -1976,31 +1976,31 @@ void Board::calculateAreaForPla(
 
   //Also accumulate all player heads
   int numPlaHeads = 0;
-  Loc allPlaHeads[MAX_PLAY_SIZE]; //need set some initial values?
+  Loc allPlaHeads[MAX_PLAY_SIZE];
   for(Loc loc = 0; loc < MAX_ARR_SIZE; loc++) {
     if(colors[loc] == pla && chain_head[loc] == loc)
       allPlaHeads[numPlaHeads++] = loc;
   }
 
   bool plaHasBeenKilled[MAX_PLAY_SIZE];
-  for(int i = 0; i<numPlaHeads; i++)
-    plaHasBeenKilled[i] = false;
+  memset(plaHasBeenKilled, false, sizeof(plaHasBeenKilled[0])*numPlaHeads);
+
 
   //Now, we can begin the benson iteration
   uint16_t vitalCountByPlaHead[MAX_ARR_SIZE];
   while(true) {
     //Zero out vital liberties by head
-    for(int i = 0; i<numPlaHeads; i++)
+    for(int i = 0; i<numPlaHeads; ++i)
       vitalCountByPlaHead[allPlaHeads[i]] = 0;
 
     //Walk all regions that are still bordered only by pass-alive stuff and accumulate a vital liberty to each pla it is vital for.
-    for(int i = 0; i<numRegions; i++) {
+    for(int i = 0; i<numRegions; ++i) {
       if(bordersNonPassAlivePlaByHead[regionHeads[i]])
         continue;
 
       int vStart = vitalStart[i];
       int vLen = vitalLen[i];
-      for(int j = 0; j<vLen; j++) {
+      for(int j = 0; j<vLen; ++j) {
         Loc plaHead = vitalForPlaHeadsLists[vStart+j];
         vitalCountByPlaHead[plaHead] += 1;
       }
@@ -2008,7 +2008,7 @@ void Board::calculateAreaForPla(
 
     //Walk all player heads and kill them if they haven't accumulated at least 2 vital liberties
     bool killedAnything = false;
-    for(int i = 0; i<numPlaHeads; i++) {
+    for(int i = 0; i<numPlaHeads; ++i) {
       //Already killed - skip
       if(plaHasBeenKilled[i])
         continue;
@@ -2036,7 +2036,7 @@ void Board::calculateAreaForPla(
 
 
   //Mark result with pass-alive groups
-  for(int i = 0; i<numPlaHeads; i++) {
+  for(int i = 0; i<numPlaHeads; ++i) {
     if(!plaHasBeenKilled[i]) {
       Loc plaHead = allPlaHeads[i];
       Loc cur = plaHead;

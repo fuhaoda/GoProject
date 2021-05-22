@@ -5,14 +5,14 @@
 #include "core/timer.h"
 #include "DrBombeExplore/benchmarksolutions.h"
 int main() {
-  /*
-  ClockTimer timerun;
+
+
 
   Tests::runBoardIOTests();
   Tests::runBoardBasicTests();
   Tests::runBoardAreaTests();
-  auto a = timerun.getSeconds();
-*/
+
+
   BenchmarkSolutions benchmark;
 
   benchmark.testBenson();
