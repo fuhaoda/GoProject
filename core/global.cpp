@@ -292,8 +292,6 @@ string Global::trim(const string& s)
   if (p2 == string::npos)
     return string();
   size_t p1 = s.find_first_not_of(" \t\r\n\f\v");
- // if (p1 == string::npos) //these two lines may not necessary
- //   p1 = 0;
   return s.substr(p1,(p2-p1)+1);
 }
 
