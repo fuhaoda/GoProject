@@ -1864,7 +1864,7 @@ void Board::calculateAreaForPla(
     //  already checked that regionIdxByLoc[initialLoc] == -1 before calling this function
     //  therefore,  the tailTarget start from initialLoc
     Loc tailTarget = initialLoc;
-    bool isVelnNoneZero {vitalLen[regionIdx]>0};
+    bool isVlenNoneZero {vitalLen[regionIdx]>0};
     int buildRegionQueueHead = 0;
     int buildRegionQueueTail = 1;
     buildRegionQueue[0] = initialLoc;
@@ -1878,7 +1878,7 @@ void Board::calculateAreaForPla(
       //First, filter out any pla heads it turns out we're not vital for because we're not adjacent to them
       //In the case where suicide is disallowed, we only do this filtering on intersections that are actually empty
       {
-        if(isVelnNoneZero && (isMultiStoneSuicideLegal || colors[loc] == C_EMPTY)) {
+        if(isVlenNoneZero && (isMultiStoneSuicideLegal || colors[loc] == C_EMPTY)) {
           uint16_t vStart = vitalStart[regionIdx];
           uint16_t oldVLen = vitalLen[regionIdx];
           uint16_t newVLen = 0;
@@ -1889,7 +1889,7 @@ void Board::calculateAreaForPla(
             }
           }
           vitalLen[regionIdx] = newVLen;
-          isVelnNoneZero = (newVLen>0);
+          isVlenNoneZero = (newVLen>0);
         }
       }
 
@@ -1926,7 +1926,7 @@ void Board::calculateAreaForPla(
       if(regionIdxByLoc[loc] != -1)
         continue;
       if(colors[loc] != C_EMPTY) {
-        atLeastOnePla |= (colors[loc] == pla);
+        atLeastOnePla |= (colors[loc] == pla); //todo: this can moved outside.
         continue;
       }
       int16_t regionIdx = numRegions;
@@ -1974,7 +1974,7 @@ void Board::calculateAreaForPla(
     }
   }
 
-  //Also accumulate all player heads
+  //Also accumulate all player heads //todo: make this as independent and track it when and place stone
   int numPlaHeads = 0;
   Loc allPlaHeads[MAX_PLAY_SIZE];
   for(Loc loc = 0; loc < MAX_ARR_SIZE; loc++) {
@@ -2055,8 +2055,8 @@ void Board::calculateAreaForPla(
     //These should be mutually exclusive with these same regions but for the opponent, so this is safe.
     //We need to mark unconditionally since we WILL sometimes overwrite points of the opponent's color marked earlier, in the
     //case that the opponent was marking unsafeBigTerritories and marked an empty spot surrounded by a pass-dead group.
-    bool shouldMark = numInternalSpacesMax2[i] <= 1 && atLeastOnePla && !bordersNonPassAlivePlaByHead[head];
-    shouldMark = shouldMark || (safeBigTerritories && atLeastOnePla && !containsOpp[i] && !bordersNonPassAlivePlaByHead[head]);
+    bool shouldMark = numInternalSpacesMax2[i] <= 1 && !bordersNonPassAlivePlaByHead[head] && atLeastOnePla; //todo check whether numer of internal space can be 3
+    shouldMark = shouldMark || (safeBigTerritories && !containsOpp[i] && !bordersNonPassAlivePlaByHead[head] && atLeastOnePla);
     if(shouldMark) {
       Loc cur = head;
       do {
@@ -2067,7 +2067,7 @@ void Board::calculateAreaForPla(
     else {
       //Mark unsafeBigTerritories only if the opponent didn't already claim the very stones we're using to surround it as
       //pass-dead and therefore the whole thing as pass-alive-territory.
-      bool shouldMarkIfEmpty = (unsafeBigTerritories && atLeastOnePla && !containsOpp[i]);
+      bool shouldMarkIfEmpty = (unsafeBigTerritories && !containsOpp[i] && atLeastOnePla);
       if(shouldMarkIfEmpty) {
         Loc cur = head;
         do {
