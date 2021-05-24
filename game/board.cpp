@@ -1864,7 +1864,7 @@ void Board::calculateAreaForPla(
     //  already checked that regionIdxByLoc[initialLoc] == -1 before calling this function
     //  therefore,  the tailTarget start from initialLoc
     Loc tailTarget = initialLoc;
-    bool isVlenNoneZero {vitalLen[regionIdx]>0};
+    bool isVlenNonZero = vitalLen[regionIdx]>0;
     int buildRegionQueueHead = 0;
     int buildRegionQueueTail = 1;
     buildRegionQueue[0] = initialLoc;
@@ -1878,7 +1878,7 @@ void Board::calculateAreaForPla(
       //First, filter out any pla heads it turns out we're not vital for because we're not adjacent to them
       //In the case where suicide is disallowed, we only do this filtering on intersections that are actually empty
       {
-        if(isVlenNoneZero && (isMultiStoneSuicideLegal || colors[loc] == C_EMPTY)) {
+        if(isVlenNonZero && (isMultiStoneSuicideLegal || colors[loc] == C_EMPTY)) {
           uint16_t vStart = vitalStart[regionIdx];
           uint16_t oldVLen = vitalLen[regionIdx];
           uint16_t newVLen = 0;
@@ -1889,7 +1889,7 @@ void Board::calculateAreaForPla(
             }
           }
           vitalLen[regionIdx] = newVLen;
-          isVlenNoneZero = (newVLen>0);
+          isVlenNonZero = (newVLen>0);
         }
       }
 
@@ -2055,7 +2055,7 @@ void Board::calculateAreaForPla(
     //These should be mutually exclusive with these same regions but for the opponent, so this is safe.
     //We need to mark unconditionally since we WILL sometimes overwrite points of the opponent's color marked earlier, in the
     //case that the opponent was marking unsafeBigTerritories and marked an empty spot surrounded by a pass-dead group.
-    bool shouldMark = numInternalSpacesMax2[i] <= 1 && !bordersNonPassAlivePlaByHead[head] && atLeastOnePla; //todo check whether numer of internal space can be 3
+    bool shouldMark = numInternalSpacesMax2[i] <= 1 && !bordersNonPassAlivePlaByHead[head] && atLeastOnePla; //todo: the numer of internal space can be 2
     shouldMark = shouldMark || (safeBigTerritories && !containsOpp[i] && !bordersNonPassAlivePlaByHead[head] && atLeastOnePla);
     if(shouldMark) {
       Loc cur = head;
